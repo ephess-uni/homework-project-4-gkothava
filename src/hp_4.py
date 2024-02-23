@@ -8,27 +8,70 @@ from collections import defaultdict
 def reformat_dates(old_dates):
     """Accepts a list of date strings in format yyyy-mm-dd, re-formats each
     element to a format dd mmm yyyy--01 Jan 2001."""
-    pass
+    res = [datetime.strptime(old_dt, "%Y-%m-%d").strftime('%d %b %Y') for old_dt in old_dates]
+    return res
 
 
 def date_range(start, n):
     """For input date string `start`, with format 'yyyy-mm-dd', returns
     a list of of `n` datetime objects starting at `start` where each
     element in the list is one day after the previous."""
-    pass
-
+    if not isinstance(start, str) or not isinstance(n, int):
+        
+        raise TypeError()
+    
+    rng = []
+    frmat = datetime.strptime(start, '%Y-%m-%d')
+    for a in range(n):
+        rng.append(frmat + timedelta(days=a))
+    return rng
 
 def add_date_range(values, start_date):
     """Adds a daily date range to the list `values` beginning with
     `start_date`.  The date, value pairs are returned as tuples
     in the returned list."""
-    pass
+    date_range_len = date_range(start_date, len(values))
+    zipped_list = list(zip(date_range_len, values))
+    return zipped_list
 
+
+def helper_static(infile):
+    
+    headSet = ("book_uid,isbn_13,patron_id,date_checkout,date_due,date_returned".
+              split(','))
+    
+    with open(infile, 'r') as f:
+        c = DictReader(f, fieldnames=headSet)
+        all_rows = [row for row in c]
+
+        all_rows.pop(0)
+    
+    return all_rows
 
 def fees_report(infile, outfile):
     """Calculates late fees per patron id and writes a summary report to
     outfile."""
-    pass
+    
+    dt_format = '%m/%d/%Y'
+    rows = helper_static(infile)
+    cv = defaultdict(float)
+
+    for row in rows:
+       
+        patron = row['patron_id']
+        due_on = datetime.strptime(row['date_due'], dt_format)
+        returned_on = datetime.strptime(row['date_returned'], dt_format)
+        late_days = (returned_on - due_on).days
+        cv[patron]+= 0.25 * late_days if late_days > 0 else 0.0
+
+    header = [
+        {'patron_id': pn, 'late_fees': f'{fs:0.2f}'} for pn, fs in cv.items()
+    ]
+
+    with open(outfile, 'w') as outfile:
+        final_out = DictWriter(outfile, ['patron_id', 'late_fees'])
+        final_out.writeheader()
+        final_out.writerows(header)
 
 
 # The following main selection block will only run when you choose
